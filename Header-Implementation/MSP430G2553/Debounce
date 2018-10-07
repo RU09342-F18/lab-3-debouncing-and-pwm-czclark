@@ -22,11 +22,9 @@ DebounceBt()
        P1IFG &= ~BIT3; // Clears interrupt flag for button press
 
        TA0CTL = TACLR;
-       TACCR0 = 1000000*.000002; // ACLK frequency times the time it takes for bouncing to stop
-                                // 2us
+       TACCR0 = 1000000*.000002; // SMCLK frequency times the time it takes for bouncing to stop
+                                // .2us
        CCTL0 = CCIE; // Capture Compare - Interrupt Enable
-
-      // BCSCTL3 = LFXT1S_2;
 
        __bis_SR_register(CPUOFF + GIE);  // MSP goes in LPM0
 
@@ -38,14 +36,17 @@ DebounceBt()
   #pragma vector=PORT1_VECTOR
 __interrupt void Port_1(void) // If interrupt, button press, occurs ...
     {
+        P1IE &= ~BIT3;
         P1IFG &= ~BIT3; // Clear interrupt flag
-        TA0CTL = TASSEL_1 + MC_2 + ID_0;  // Timer is set in up mode mode (ACLK)
+
+        TA0CTL = TASSEL_2 + MC_2 + ID_0;  // Timer is set in up mode mode (ACLK)
     }
 
 #pragma vector=TIMER0_A0_VECTOR
 __interrupt void Timer_A0(void)
 {
-      TA0CTL = TASSEL_0;
+      TA0CTL = TASSEL_2 + MC_0;
+      P1IE |= BIT3;
       P1OUT ^= BIT0; // Toggles LED
 
       TA0CTL = TACLR;
