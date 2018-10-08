@@ -18,22 +18,15 @@ void PWM_Hardware()
     P1SEL2 &= ~BIT4; // Unimportant      SHOWS SMCLK FREQUENCY
     P1DIR |= BIT4; // Unimportant
 
-    P1DIR |= BIT0; // configure P1.0 as output (LED)
+    P1DIR &= ~BIT0; // configure P1.0 as input (LED)
 
   // Timer A1 setup (LED blink) ////////////////////////////////////////////////////////////////
 
-    P3SEL |= BIT2;
-    P3SEL2 &= BIT2;
-    P3DIR |= BIT2;    // PWM output connected to P3.2
+    P2SEL |= BIT2;
+    P2SEL2 &= ~BIT2;
+    P2DIR |= BIT2;    // PWM output connected to P2.2
 
-    P3IE |= BIT2;   // Enable interrupt for button (P1.3)
-    P1IES |= BIT2;  // P1.3 Hi/Lo edge
-
-    P1IFG &= ~BIT3; // Clears interrupt flag for button press
-
-    TA1CTL = TACLR;
-
-    TA1CCTL1 = OUTMOD_2; // Capture Compare - Interrupt Enable for CCR1
+    TA1CCTL1 = OUTMOD_2; // Toggle / Reset output mode
 
     TA1CCR0 = 1000; // With SMCLK, creates a 1 kHz timer frequency
                       // CCR0 controls frequency of signal
@@ -41,7 +34,8 @@ void PWM_Hardware()
     TA1CCR1 = 500; // 1000/2 // Controls Duty Cycle of signal
                    // counts needed = Duty cycle * clock rate (SMCLK) divided by frequency of PWM (1 kHz)
 
-    TA1CTL = TASSEL_2 + MC_1 + ID_0;  // Timer is set in up mode mode (ACLK)
+    TA1CTL = TACLR;
+    TA1CTL = TASSEL_2 + MC_1 + ID_0;  // Timer is set in up mode mode (SMCLK)
 }
 
 
@@ -51,13 +45,13 @@ void DebounceBt()
 // Button Setup //////////////////////////////////////////////////////////////////////////////////
 
        P1SEL &= ~BIT3; // Makes P1.3 a gpio port (button)
+       P1SEL2 &= ~BIT3;
 
        P1DIR &= ~BIT3; // configure P1.3 as input
 
        P1REN |= BIT3;  // Enable Pullup/down Resistor for SW1
        P1OUT |= BIT3;  // Sets resistor to pull up
 
-       P1IE = 0;
        P1IE |= BIT3;   // Enable interrupt for button (P1.3)
        P1IES |= BIT3;  // P1.3 Hi/Lo edge
 
@@ -66,19 +60,13 @@ void DebounceBt()
 
 // Timer A0 (Debounce) setup ///////////////////////////////////////////////////////////////////////
 
-       TA0CTL = TACLR;
+       TA0CTL = TASSEL_2 + MC_0 + ID_0 + TACLR;
 
-       TA0CCR0 = 2; // (1000000*.000002) // SMCLK frequency multiplied by the time it takes for bouncing to stop
+       TA0CCR0 = 2;  // (1000000*.000002) // SMCLK frequency multiplied by the time it takes for bouncing to stop
                                          // 2us
        TA0CCTL0 = CCIE; // Capture Compare - Interrupt Enable
 }
 
-#pragma vector=PORT3_VECTOR
-__interrupt void Port_1(void) //
-{
-    P1OUT ^= BIT0;
-    P3IES ^= BIT3;
-}
 
 #pragma vector=PORT1_VECTOR
 __interrupt void Port_1(void) // If interrupt, button press, occurs ...
@@ -86,25 +74,27 @@ __interrupt void Port_1(void) // If interrupt, button press, occurs ...
         P1IE &= ~BIT3;
         P1IFG &= ~BIT3; // Clear interrupt flag
 
-
+        TA0CCR0 = 2;  // (1000000*.000002) // SMCLK frequency multiplied by the time it takes for bouncing to stop
+                                                 // 2us
+      //  TA1CTL = TASSEL_2 + MC_0 + ID_0;
         TA0CTL = TASSEL_2 + MC_1 + ID_0;
     }
 
 #pragma vector=TIMER0_A0_VECTOR    // Interrupt sequence for CCR0 register (TimerA1)
 __interrupt void Timer_A0(void)
 {
-      TA0CTL = TASSEL_2 + MC_0;
+      TA0CTL = TASSEL_2 + MC_0 + TACLR;
       P1IE |= BIT3;             // Enables button interrupt
+      TA0CCTL0 &= (~CCIFG);
 
-           if(TA1CCR1 == TA1CCR0){
-               TA1CCR1 = 0;          // Sets duty cycle to 0% after reaching 100%
+           if(TA1CCR1 < TA1CCR0) {
+               TA1CCR1 += 2000;
            }
            else {
-               TA1CCR1 += 100;       // Increases duty cycle by 10%
+               TA1CCR1 = 0;
            }
-           TA0CTL = TACLR;
-           TA1CTL = TASSEL_2 + MC_1 + ID_0; // Restart Timer A1
-      TA0CTL = TACLR;
+
+    //  TA1CTL = TASSEL_2 + MC_1 + ID_0 + TACLR; // Restart Timer A1
 }
 
 
@@ -115,7 +105,9 @@ int main(void)
     PWM_Hardware();
     DebounceBt();
     __bis_SR_register(CPUOFF + GIE);  // MSP goes in LPM0
+
     while(1){}
 
 	return 0;
 }
+
