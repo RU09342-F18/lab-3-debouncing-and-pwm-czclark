@@ -35,7 +35,7 @@ void PWM_Software()
     TA1CCR1 = 500; // 1000/2 // Controls Duty Cycle of signal
                    // counts needed = Duty cycle * clock rate (SMCLK) divided by frequency of PWM (1 kHz)
 
-    TA1CTL = TASSEL_2 + MC_1 + ID_0;  // Timer is set in up mode mode (ACLK)
+    TA1CTL = TASSEL_2 + MC_1 + ID_0 + TACLR;  // Timer is set in up mode mode (ACLK)
 }
 
 
@@ -45,6 +45,7 @@ void DebounceBt()
 // Button Setup //////////////////////////////////////////////////////////////////////////////////
 
        P1SEL &= ~BIT3; // Makes P1.3 a gpio port (button)
+       P1SEL2 &= ~BIT3;
 
        P1DIR &= ~BIT3; // configure P1.3 as input
 
@@ -75,39 +76,34 @@ __interrupt void Port_1(void) // If interrupt, button press, occurs ...
 
 
         TA0CTL = TASSEL_2 + MC_1 + ID_0;
-        TA1CTL = TASSEL_2 + MC_0;  // Stall Timer A1
+    //    TA1CTL = TASSEL_2 + MC_0;  // Stall Timer A1
     }
 
 
 #pragma vector=TIMER0_A0_VECTOR    // Interrupt sequence for CCR0 register (TimerA1)
 __interrupt void Timer_A0(void)
 {
-      TA0CTL = TASSEL_2 + MC_0;
+      TA0CTL = TASSEL_2 + MC_0 + TACLR;
       P1IE |= BIT3;             // Enables button interrupt
 
-      if(TA1CCR1 == TA1CCR0){
-          TA1CCR1 = 0;          // Sets duty cycle to 0% after reaching 100%
+      if(TA1CCR1 < TA1CCR0){
+          TA1CCR1 += 100;          // Sets duty cycle to 0% after reaching 100%
       }
       else {
-          TA1CCR1 += 100;       // Increases duty cycle by 10%
+          TA1CCR1 = 0;       // Increases duty cycle by 10%
       }
-      TA0CTL = TACLR;
-      TA1CTL = TASSEL_2 + MC_1 + ID_0; // Restart Timer A1
+   //   TA1CTL = TASSEL_2 + MC_1 + ID_0; // Restart Timer A1
 }
 
 
 #pragma vector=TIMER1_A0_VECTOR    // Interrupt sequence for CCR0 register (TimerA1)
+#pragma vector=TIMER1_A1_VECTOR   // Interrupt sequence for CCR1 register (TimerA1)
 __interrupt void Timer_A1(void)
 {
       P1OUT ^= BIT0; // Toggles LED
 }
 
 
-#pragma vector=TIMER1_A1_VECTOR   // Interrupt sequence for CCR1 register (TimerA1)
-__interrupt void Timer_A11(void)
-{
-      P1OUT ^= BIT0; // Toggles LED
-}
 
 int main(void)
 {
