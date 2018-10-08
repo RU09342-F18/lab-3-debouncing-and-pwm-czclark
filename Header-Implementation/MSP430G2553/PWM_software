@@ -29,13 +29,13 @@ void PWM_Software()
     TA1CCTL0 = CCIE; // Capture Compare - Interrupt Enable for CCR0
     TA1CCTL1 = CCIE; // Capture Compare - Interrupt Enable for CCR1
 
-    TA1CCR0 = 32768; // With SMCLK, creates a 1 kHz timer frequency
+    TA1CCR0 = 1000; // With SMCLK, creates a 1 kHz timer frequency
                       // CCR0 controls frequency of signal
 
-    TA1CCR1 = 16384; // 1000/2 // Controls Duty Cycle of signal
+    TA1CCR1 = 500; // 1000/2 // Controls Duty Cycle of signal
                    // counts needed = Duty cycle * clock rate (SMCLK) divided by frequency of PWM (1 kHz)
 
-    TA1CTL = TASSEL_1 + MC_1 + ID_0;  // Timer is set in up mode mode (ACLK)
+    TA1CTL = TASSEL_2 + MC_1 + ID_0;  // Timer is set in up mode mode (ACLK)
 }
 
 
