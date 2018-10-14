@@ -9,26 +9,18 @@ void PWM_Hardware()
 {
 
 // LED Setup
-    P1OUT = 0; // Sets P1 output register to 0
+    P2OUT = 0; // Sets P2 output register to 0
 
-    P1SEL &= ~BIT0;
-    P1SEL2 &= ~BIT0; // configure P1.0 as GPIO pin
-
-    P1SEL |= BIT4;  // Unimportant  (Testing purposes)
-    P1SEL2 &= ~BIT4; // Unimportant      SHOWS SMCLK FREQUENCY
-    P1DIR |= BIT4; // Unimportant
-
-    P1DIR &= ~BIT0; // configure P1.0 as input (LED)
+    P2SEL |= BIT1;
+    P2SEL2 &= ~BIT1;
+    P2DIR |= BIT1; // Top 3 lines configure PWM signal to P2.1 (LED)
 
   // Timer A1 setup (LED blink) ////////////////////////////////////////////////////////////////
 
-    P2SEL |= BIT2;
-    P2SEL2 &= ~BIT2;
-    P2DIR |= BIT2;    // PWM output connected to P2.2
 
     TA1CCTL1 = OUTMOD_2; // Toggle / Reset output mode
 
-    TA1CCR0 = 1000; // With SMCLK, creates a 1 kHz timer frequency
+    TA1CCR0 = 999; // With SMCLK, creates a 1 kHz timer frequency
                       // CCR0 controls frequency of signal
 
     TA1CCR1 = 500; // 1000/2 // Controls Duty Cycle of signal
@@ -71,12 +63,11 @@ void DebounceBt()
 #pragma vector=PORT1_VECTOR
 __interrupt void Port_1(void) // If interrupt, button press, occurs ...
     {
-        P1IE &= ~BIT3;
-        P1IFG &= ~BIT3; // Clear interrupt flag
+        P1IE &= ~BIT3;  // Disable button interrupt
+        P1IFG &= ~BIT3; // Clear button interrupt flag
 
         TA0CCR0 = 2;  // (1000000*.000002) // SMCLK frequency multiplied by the time it takes for bouncing to stop
                                                  // 2us
-      //  TA1CTL = TASSEL_2 + MC_0 + ID_0;
         TA0CTL = TASSEL_2 + MC_1 + ID_0;
     }
 
@@ -84,17 +75,17 @@ __interrupt void Port_1(void) // If interrupt, button press, occurs ...
 __interrupt void Timer_A0(void)
 {
       TA0CTL = TASSEL_2 + MC_0 + TACLR;
-      P1IE |= BIT3;             // Enables button interrupt
-      TA0CCTL0 &= (~CCIFG);
 
-           if(TA1CCR1 < TA1CCR0) {
-               TA1CCR1 += 2000;
-           }
-           else {
-               TA1CCR1 = 0;
-           }
+      P1IE |= BIT3;    // Enables button interrupt
 
-    //  TA1CTL = TASSEL_2 + MC_1 + ID_0 + TACLR; // Restart Timer A1
+      if(TA1CCR1 > 0){   // Increases duty cycle by 10% after button press
+          TA1CCR1 -= 100;
+      }
+      else {
+          TA1CCR1 = 1000;       // Set the duty cycle to 0%
+      }
+
+      TA0CCTL0 &= ~CCIFG;       // Remove interrupt flag for debouncing
 }
 
 
@@ -110,4 +101,3 @@ int main(void)
 
 	return 0;
 }
-
