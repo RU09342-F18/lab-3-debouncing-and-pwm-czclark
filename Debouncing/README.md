@@ -1,18 +1,5 @@
 # Software Debouncing
-In previous labs, we talked about how objects such as switches can cause some nasty effects since they are actually a mechanical system at heart. We talked about the simple hardware method of debouncing, but due to the many different design constraints, you may not be able to add or adjust hardware. Debouncing is also only one of many applications which would require the use of built in Timers to allow for other processes to take place.
 
-## Task
-You need to utilize the TIMER modules within the MSP430 processors to implement a debounced switch to control the state of an LED. You most likely will want to hook up your buttons on the development boards to an oscilloscope to see how much time it takes for the buttons to settle. The idea here is that your processor should be able to run other code, while relying on timers and interrupts to manage the debouncing in the background. *You should not be using polling techniques for this assignment.*
+When a button connected to a circuit is pressed, it permits or restricts current flow. The act of pressing a button down produces a pulse or step signal that feeds back into the circuit. However because of the mechanical nature of the button, upon being pressed the button will actually bounce back and forth a tiny distance before settling down, affecting the signal. This bouncing effect from the button can accidentally trigger the wrong event in our microcontrollers, because the interrupt corresponding to it can occur multiple times. In order to ensure the circuit responds correctly we can debounce the button press.
 
-## Deliverables
-You will need to have two folders in this repository, one for each of the processors that you used for this part of the lab. Remember to replace this README with your own.
-
-### Hints
-You need to take a look at how the P1IE and P1IES registers work and how to control them within an interrupt routine. Remember that the debouncing is not going to be the main process you are going to run by the end of the lab.
-
-## Extra Work
-### Low Power Modes
-Go into the datasheets or look online for information about the low power modes of your processors and using Energy Trace, see what the lowest power consumption you can achieve while still running your debouncing code. Take a note when your processor is not driving the LED (or unplug the header connecting the LED and check) but running the interrupt routine for your debouncing.
-
-### Double the fun
-Can you expand your code to debounce two switches? Do you have to use two Timer peripherals to do this?
+To debounce a button press, first the length of bouncing effect has to be identified. This can be done using an oscilloscope. Once length of time that the button bounces is known, are microcontrollers can be configured to wait for bouncing to stop before executing a function. After the initial rising or falling edge from the button press, the microcontroller can disable the interrupt associated with the button press and start a timer. The timer will last as long as the bouncing effect, when it stop the interrupt will be reset and the code associated with the interrupt can be executed. 
